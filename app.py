@@ -1,4 +1,5 @@
 # Streamlit page for cam-to-torque. Run with:  streamlit run app.py
+import numpy as np
 import streamlit as st
 
 from calc import Params, run
@@ -30,12 +31,14 @@ off = b.number_input("Offset d (mm)", value=d.d, step=0.5)
 a, b = sb.columns(2)
 k = a.number_input("Spring k (N/mm)", value=d.k, step=5.0, min_value=0.1)
 s0 = b.number_input("Preload (mm)", value=d.s0, step=0.5, min_value=0.0)
-
-travel = sb.number_input("Spring max travel (mm)", value=d.travel, step=1.0, min_value=0.1,
-                         help="Free length minus solid length, from the spring's datasheet.")
+a, b = sb.columns(2)
+travel = a.number_input("Spring max travel (mm)", value=d.travel, step=1.0, min_value=0.1,
+                        help="Free length minus solid length, from the spring's datasheet.")
+alpha = b.number_input("Spring angle α (°)", value=d.alpha, step=5.0, min_value=0.0, max_value=89.9,
+                       help="Angle of the rod and spring from vertical. The roller still moves straight up.")
 
 p = Params(Rb=Rb, h=h, rise_start=rise_start, rise=rise, dwell=dwell, fall=fall,
-           Rf=Rf, d=off, k=k, s0=s0, travel=travel)
+           Rf=Rf, d=off, k=k, s0=s0, travel=travel, alpha=alpha)
 error = p.check()
 
 
@@ -46,8 +49,8 @@ def build(p):
 
 
 # ---------- page ----------
-st.title("Cam-to-Torque Simulator")
-st.caption("Set the cam shape, input the mechanical parameters, and see the lift and torque curves.")
+st.title("Cam to torque")
+st.caption("Set the cam shape and the follower and spring on the left. Press Play or drag the slider to turn the cam.")
 
 if error:
     st.error(error)
@@ -55,11 +58,13 @@ if error:
 
 r, fig = build(p)
 
-m1, m2, m3, m4 = st.columns(4) # one-glance summary of the whole turn
+m1, m2, m3, m4, m5 = st.columns(5) # one-glance summary of the whole turn
 m1.metric("Max lift", f"{r.lift.max():.2f} mm")
-m2.metric(f"Compression ({100 * r.s.max() / p.travel:.0f}%)", f"{r.s.max():.2f} / {p.travel:g} mm")
+m2.metric(f"Spring travel used ({100 * r.s.max() / p.travel:.0f}%)", f"{r.s.max():.2f} / {p.travel:g} mm")
 m3.metric("Peak torque", f"{r.T.max():.2f} N·m")
 m4.metric("Lowest torque", f"{r.T.min():.2f} N·m")
+m5.metric("Slide needed", f"{r.lift.max() * np.sin(np.radians(p.alpha)):.2f} mm",
+          help="How far the rod tip slides across the spring's end plate: max lift × sin α.")
 
 tab_mech, tab_method = st.tabs(["Mechanism", "Method"])
 
@@ -75,7 +80,8 @@ with tab_method:
         ("Roller touching a point", r"y_{roller}(\varphi) = y_{point} + \sqrt{R_f^2 - (x - d)^2}"),
         ("Roller centre", r"y_{roller}(\theta) = \max_{\varphi} y_{roller}(\varphi)"),
         ("Lift", r"\text{lift} = y_{roller} - \sqrt{(R_b + R_f)^2 - d^2}"),
-        ("Compression", r"s = s_0 + \text{lift}"),
+        ("Compression", r"s = s_0 + \text{lift}\cos\alpha"),
+        ("Slide", r"\text{slide} = \text{lift}\sin\alpha"),
         ("Slope", r"\dfrac{ds}{d\theta} = \dfrac{s(\theta + 0.1^\circ) - s(\theta - 0.1^\circ)}{0.2^\circ \text{ in rad}}"),
         ("Torque", r"T = k\,s\,\dfrac{ds}{d\theta}"),
     ]
@@ -83,3 +89,5 @@ with tab_method:
         left, right = st.columns([1, 3], vertical_alignment="center")
         left.markdown(f"**{n}. {label}**")
         right.latex(formula)
+    st.caption("The bump holds at h on the dwell, runs the same curve in reverse on the fall, and is 0 elsewhere. "
+               "The roller rises straight up; the rod and spring sit at α, so only lift·cos α squashes the spring. Torque is Realmuto Eq. 23 reversed.")

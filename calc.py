@@ -22,6 +22,7 @@ class Params:
     k: float = 100.0 # spring constant (N/mm)
     s0: float = 5.0 # preload (mm)
     travel: float = 30.0 # spring max travel, from its datasheet (mm)
+    alpha: float = 0.0 # rod and spring angle from vertical (deg)
 
     def check(self): # returns an error message, or None if the inputs are fine
         if self.Rb <= 0 or self.Rf <= 0 or self.k <= 0 or self.travel <= 0:
@@ -30,13 +31,16 @@ class Params:
             return "Max lift and preload can't be negative."
         if abs(self.d) >= self.Rb:
             return "Offset must be smaller than the base radius."
+        if not 0 <= self.alpha < 90:
+            return "Spring angle must be from 0 up to (not including) 90 deg."
         if self.rise <= 0 or self.fall <= 0 or self.dwell < 0:
             return "Rise and fall angles must be above zero."
         if self.rise + self.dwell + self.fall > 360:
             return "Rise + dwell + fall can't be more than 360 deg."
         max_lift = np.sqrt((self.Rb + self.h + self.Rf) ** 2 - self.d**2) - np.sqrt((self.Rb + self.Rf) ** 2 - self.d**2) # roller on the highest part of the cam
-        if self.s0 + max_lift > self.travel: # spring can't be squashed past its max travel
-            return (f"The spring would need {self.s0 + max_lift:.2f} mm of travel (preload {self.s0:g} + max lift {max_lift:.2f}), "
+        max_s = self.s0 + max_lift * np.cos(np.radians(self.alpha)) # most the spring gets squashed
+        if max_s > self.travel: # spring can't be squashed past its max travel
+            return (f"The spring would need {max_s:.2f} mm of travel (preload {self.s0:g} + max lift {max_lift:.2f} x cos {self.alpha:g} deg), "
                     f"but it only has {self.travel:g} mm. Lower the preload or max lift, or use a spring with more travel.")
         return None
 
@@ -99,7 +103,7 @@ def lift_curve(phi, R, p):
 
 
 def torque_curve(lift, p):
-    s = p.s0 + lift # s = s0 + lift
+    s = p.s0 + lift * np.cos(np.radians(p.alpha)) # only the part of the lift along the spring squashes it
     one_turn = s[:-1] # 0 .. 359.9 (360 repeats 0)
     ds = (np.roll(one_turn, -1) - np.roll(one_turn, 1)) / np.radians(2 * STEP) # (s(th+0.1) - s(th-0.1)) / 0.2 deg, wraps at 0/360
     ds = np.append(ds, ds[0]) # value at 360 = value at 0
