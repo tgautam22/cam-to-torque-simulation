@@ -1,4 +1,4 @@
-# Streamlit page for cam-to-torque. Run with:  streamlit run app.py
+# Streamlit page for cam-to-torque
 import numpy as np
 import streamlit as st
 
