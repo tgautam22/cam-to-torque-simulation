@@ -13,7 +13,8 @@ SPRING = "#8A6A2E"
 ACCENT = "#2952C8"
 LIFT_COL = "#7A3FB0"
 TORQUE_COL = "#2952C8"
-GRID = "#E9ECED"
+GRID = "#E3E6E8"
+TEXT = "#1D2327"
 ANGLE_LINE = "#B0B6BA"
 
 FRAME_STEP = 2 # deg between animation frames
@@ -51,7 +52,8 @@ def _frame(r, p, theta): # every part that is redrawn each frame, in drawing ord
     bx, by = _circle(0, 0, p.Rb, 180)
     rx, ry = _circle(p.d, yc, p.Rf)
     lx = p.d + p.Rf + 4 # lift dimension x position
-    text = f"θ = {theta:.0f}°<br>lift {r.lift[i]:.2f} mm<br>compression {r.s[i]:.2f} mm<br>torque {r.T[i]:.2f} N·m"
+    text = (f"<b>θ = {theta:.0f}°</b><br>Lift  {r.lift[i]:.2f} mm<br>"
+            f"Compression  {r.s[i]:.2f} mm<br>Torque  {r.T[i]:.2f} N·m")
     return [
         go.Scatter(x=cam_x, y=cam_y), # cam
         go.Scatter(x=bx, y=by), # base circle
@@ -85,7 +87,7 @@ STYLE = [ # look of each part in _frame, same order; set once, frames only chang
     dict(mode="markers", marker=dict(color=PART, size=6)), # roller centre
     dict(mode="lines+markers", line=dict(color=ACCENT, width=1.5),
          marker=dict(symbol="line-ew", size=10, line=dict(width=2, color=ACCENT))), # lift dimension
-    dict(mode="text", textposition="bottom right", textfont=dict(size=13, color=LINE)), # readout
+    dict(mode="text", textposition="bottom right", textfont=dict(size=15, color=TEXT)), # readout
     dict(mode="markers", marker=dict(color=LIFT_COL, size=10)), # lift dot
     dict(mode="lines", line=dict(color=ANGLE_LINE, width=1)), # lift angle line
     dict(mode="markers", marker=dict(color=TORQUE_COL, size=10)), # torque dot
@@ -97,8 +99,9 @@ WHERE = [(1, 1)] * 12 + [(1, 2)] * 2 + [(2, 2)] * 2 # subplot of each part: draw
 def animated_fig(r, p):
     span, base, top, sw = _sizes(p)
     skip = dict(hoverinfo="skip", showlegend=False)
-    fig = make_subplots(rows=2, cols=2, horizontal_spacing=0.08, vertical_spacing=0.14,
-                        specs=[[{"rowspan": 2}, {}], [None, {}]])
+    fig = make_subplots(rows=2, cols=2, column_widths=[0.45, 0.55], horizontal_spacing=0.09, vertical_spacing=0.16,
+                        specs=[[{"rowspan": 2}, {}], [None, {}]],
+                        subplot_titles=("Mechanism", "Lift", "Torque"))
 
     for tr, st, (row, col) in zip(_frame(r, p, 0), STYLE, WHERE): # parts redrawn every frame
         fig.add_trace(tr.update(**st, **skip), row, col)
@@ -106,8 +109,10 @@ def animated_fig(r, p):
 
     fig.add_trace(go.Scatter(x=[p.d - 1.6 * sw, p.d + 1.6 * sw], y=[top, top], mode="lines",
                              line=dict(color=LINE, width=5), **skip), 1, 1) # fixed plate
-    fig.add_trace(go.Scatter(x=r.theta, y=r.lift, mode="lines", line=dict(color=LIFT_COL, width=2), **skip), 1, 2) # lift curve
-    fig.add_trace(go.Scatter(x=r.theta, y=r.T, mode="lines", line=dict(color=TORQUE_COL, width=2), **skip), 2, 2) # torque curve
+    fig.add_trace(go.Scatter(x=r.theta, y=r.lift, mode="lines", line=dict(color=LIFT_COL, width=3), showlegend=False,
+                             hovertemplate="θ %{x:.1f}°<br>lift %{y:.2f} mm<extra></extra>"), 1, 2) # lift curve
+    fig.add_trace(go.Scatter(x=r.theta, y=r.T, mode="lines", line=dict(color=TORQUE_COL, width=3), showlegend=False,
+                             hovertemplate="θ %{x:.1f}°<br>torque %{y:.2f} N·m<extra></extra>"), 2, 2) # torque curve
 
     angles = np.arange(0, 360, FRAME_STEP)
     fig.frames = [go.Frame(name=f"{a:g}", data=_frame(r, p, a), traces=moving) for a in angles] # sent to the browser once
@@ -115,13 +120,15 @@ def animated_fig(r, p):
     play = dict(frame=dict(duration=40, redraw=True), transition=dict(duration=0), fromcurrent=True, mode="immediate")
     pause = dict(frame=dict(duration=0, redraw=False), mode="immediate")
     fig.update_layout(
-        height=640, margin=dict(l=10, r=10, t=10, b=10), plot_bgcolor="white", paper_bgcolor="white",
-        updatemenus=[dict(type="buttons", direction="left", x=0, y=-0.02, xanchor="left", yanchor="top",
+        height=760, margin=dict(l=10, r=20, t=40, b=90), plot_bgcolor="white", paper_bgcolor="white",
+        font=dict(size=14, color=TEXT), hoverlabel=dict(font_size=13),
+        updatemenus=[dict(type="buttons", direction="left", x=0, y=-0.08, xanchor="left", yanchor="top",
+                          bgcolor="#F3F4F6", bordercolor="#C9CFD2", font=dict(size=14),
                           buttons=[dict(label="Play", method="animate", args=[None, play]),
                                    dict(label="Pause", method="animate", args=[[None], pause])])],
-        sliders=[dict(x=0.14, y=-0.02, len=0.86, xanchor="left", yanchor="top",
+        sliders=[dict(x=0.14, y=-0.08, len=0.86, xanchor="left", yanchor="top", pad=dict(t=0),
                       ticklen=0, font=dict(color="rgba(0,0,0,0)"), # hide the 180 step labels
-                      currentvalue=dict(prefix="θ = ", suffix="°", font=dict(color=LINE)),
+                      currentvalue=dict(prefix="Cam angle θ = ", suffix="°", font=dict(size=14, color=TEXT)),
                       steps=[dict(label=f"{a:g}", method="animate",
                                   args=[[f"{a:g}"], dict(frame=dict(duration=0, redraw=True), mode="immediate")])
                              for a in angles])],
@@ -129,7 +136,10 @@ def animated_fig(r, p):
     fig.update_xaxes(visible=False, range=[-span, span + abs(p.d) + 20], row=1, col=1)
     fig.update_yaxes(visible=False, range=[-span, top + 4], scaleanchor="x", scaleratio=1, row=1, col=1) # circles stay round
     for row, title in [(1, "lift (mm)"), (2, "torque (N·m)")]:
-        fig.update_xaxes(range=[0, 360], dtick=60, gridcolor=GRID, row=row, col=2)
-        fig.update_yaxes(title=title, gridcolor=GRID, zerolinecolor="#C9CFD2", row=row, col=2)
-    fig.update_xaxes(title="cam angle (deg)", row=2, col=2)
+        fig.update_xaxes(range=[0, 360], dtick=60, gridcolor=GRID, showline=True, linecolor="#C9CFD2",
+                         tickfont=dict(size=13, color=TEXT), row=row, col=2)
+        fig.update_yaxes(title=title, gridcolor=GRID, zerolinecolor="#9AA3A8", zerolinewidth=1.5, showline=True,
+                         linecolor="#C9CFD2", tickfont=dict(size=13, color=TEXT), row=row, col=2)
+    fig.update_xaxes(title="cam angle θ (deg)", row=2, col=2)
+    fig.update_annotations(font=dict(size=16, color=TEXT)) # subplot titles
     return fig
