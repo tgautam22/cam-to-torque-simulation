@@ -31,7 +31,11 @@ a, b = sb.columns(2)
 k = a.number_input("Spring k (N/mm)", value=d.k, step=5.0, min_value=0.1)
 s0 = b.number_input("Preload (mm)", value=d.s0, step=0.5, min_value=0.0)
 
-p = Params(Rb, h, rise_start, rise, dwell, fall, Rf, off, k, s0)
+travel = sb.number_input("Spring max travel (mm)", value=d.travel, step=1.0, min_value=0.1,
+                         help="Free length minus solid length, from the spring's datasheet.")
+
+p = Params(Rb=Rb, h=h, rise_start=rise_start, rise=rise, dwell=dwell, fall=fall,
+           Rf=Rf, d=off, k=k, s0=s0, travel=travel)
 error = p.check()
 
 
@@ -53,7 +57,7 @@ r, fig = build(p)
 
 m1, m2, m3, m4 = st.columns(4) # one-glance summary of the whole turn
 m1.metric("Max lift", f"{r.lift.max():.2f} mm")
-m2.metric("Max compression", f"{r.s.max():.2f} mm")
+m2.metric(f"Compression ({100 * r.s.max() / p.travel:.0f}%)", f"{r.s.max():.2f} / {p.travel:g} mm")
 m3.metric("Peak torque", f"{r.T.max():.2f} N·m")
 m4.metric("Lowest torque", f"{r.T.min():.2f} N·m")
 

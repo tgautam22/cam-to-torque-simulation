@@ -21,10 +21,11 @@ class Params:
     d: float = 6.0 # offset of the follower line (mm)
     k: float = 100.0 # spring constant (N/mm)
     s0: float = 5.0 # preload (mm)
+    travel: float = 30.0 # spring max travel, from its datasheet (mm)
 
     def check(self): # returns an error message, or None if the inputs are fine
-        if self.Rb <= 0 or self.Rf <= 0 or self.k <= 0:
-            return "Radii and k must be above zero."
+        if self.Rb <= 0 or self.Rf <= 0 or self.k <= 0 or self.travel <= 0:
+            return "Radii, k and max travel must be above zero."
         if self.h < 0 or self.s0 < 0:
             return "Max lift and preload can't be negative."
         if abs(self.d) >= self.Rb:
@@ -33,6 +34,10 @@ class Params:
             return "Rise and fall angles must be above zero."
         if self.rise + self.dwell + self.fall > 360:
             return "Rise + dwell + fall can't be more than 360 deg."
+        max_lift = np.sqrt((self.Rb + self.h + self.Rf) ** 2 - self.d**2) - np.sqrt((self.Rb + self.Rf) ** 2 - self.d**2) # roller on the highest part of the cam
+        if self.s0 + max_lift > self.travel: # spring can't be squashed past its max travel
+            return (f"The spring would need {self.s0 + max_lift:.2f} mm of travel (preload {self.s0:g} + max lift {max_lift:.2f}), "
+                    f"but it only has {self.travel:g} mm. Lower the preload or max lift, or use a spring with more travel.")
         return None
 
 
