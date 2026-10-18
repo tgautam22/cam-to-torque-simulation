@@ -42,8 +42,8 @@ def build(p):
 
 
 # ---------- page ----------
-st.title("Cam to torque")
-st.caption("Set the cam shape and the follower and spring on the left. Press Play or drag the slider to turn the cam.")
+st.title("Cam-to-Torque Simulator")
+st.caption("Set the cam shape, input the mechanical parameters, and see the lift and torque curves.")
 
 if error:
     st.error(error)
@@ -63,20 +63,19 @@ with tab_mech:
     st.plotly_chart(fig, width="stretch", theme=None) # theme=None keeps our own fonts and colours; Play, Pause and the angle slider are inside the figure; it animates in the browser
 
 with tab_method:
+    st.caption("Every curve is calculated every 0.1°. Angles in degrees, lengths in mm, k in N/mm, torque in N·m.")
     steps = [
-        ("Bump (cycloidal rise, x = (φ − rise start) / rise angle)",
-         r"L(\varphi) = h\left(x - \frac{\sin 2\pi x}{2\pi}\right) \;\rightarrow\; h \text{ on the dwell} \;\rightarrow\; \text{reversed on the fall} \;\rightarrow\; 0"),
-        ("Cam shape, every 0.1°", r"R(\varphi) = R_b + L(\varphi)"),
-        ("Turn the cam to θ: where cam point φ sits", r"x = R\sin(\varphi - \theta), \qquad y_{point} = R\cos(\varphi - \theta)"),
-        ("Roller centre if it touched that point (only points with |x − d| ≤ R_f)",
-         r"y_{roller}(\varphi) = y_{point} + \sqrt{R_f^2 - (x - d)^2}"),
-        ("Actual roller centre: the point it really touches", r"y_{roller}(\theta) = \max_{\varphi}\, y_{roller}(\varphi)"),
-        ("Lift", r"\text{lift}(\theta) = y_{roller}(\theta) - \sqrt{(R_b + R_f)^2 - d^2}"),
-        ("Spring compression", r"s(\theta) = s_0 + \text{lift}(\theta)"),
-        ("Slope", r"\frac{ds}{d\theta} = \frac{s(\theta + 0.1^\circ) - s(\theta - 0.1^\circ)}{0.2^\circ \text{ in radians}}"),
-        ("Torque (Realmuto Eq. 23 reversed)", r"T(\theta) = k \, s \, \frac{ds}{d\theta}"),
+        ("Bump", r"L(\varphi) = h\left(x - \dfrac{\sin 2\pi x}{2\pi}\right),\quad x = \dfrac{\varphi - \varphi_{start}}{\beta_{rise}}"),
+        ("Cam radius", r"R(\varphi) = R_b + L(\varphi)"),
+        ("Turn the cam", r"x = R\sin(\varphi - \theta),\quad y_{point} = R\cos(\varphi - \theta)"),
+        ("Roller touching a point", r"y_{roller}(\varphi) = y_{point} + \sqrt{R_f^2 - (x - d)^2}"),
+        ("Roller centre", r"y_{roller}(\theta) = \max_{\varphi} y_{roller}(\varphi)"),
+        ("Lift", r"\text{lift} = y_{roller} - \sqrt{(R_b + R_f)^2 - d^2}"),
+        ("Compression", r"s = s_0 + \text{lift}"),
+        ("Slope", r"\dfrac{ds}{d\theta} = \dfrac{s(\theta + 0.1^\circ) - s(\theta - 0.1^\circ)}{0.2^\circ \text{ in rad}}"),
+        ("Torque", r"T = k\,s\,\dfrac{ds}{d\theta}"),
     ]
     for n, (label, formula) in enumerate(steps, start=1):
-        with st.container(border=True):
-            st.markdown(f"**{n}. {label}**")
-            st.latex(formula)
+        left, right = st.columns([1, 3], vertical_alignment="center")
+        left.markdown(f"**{n}. {label}**")
+        right.latex(formula)
